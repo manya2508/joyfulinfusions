@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+@import "tailwindcss";
+
+*{
+  font-family: "Outfit", sans-serif;
+}
+
+@theme {
+  --color-primary: #c6e48d; /* Teapot green */
+  --color-accent: #f2d97d;  /* Lid & handle yellow */
+  --color-secondary: #84b87f; /* Leaf green */
+  --color-text: #855f4e;     /* Main text brown */
+  --color-background: #fffdf7; /* Background tone */
+  --color-detail: #d69784;   /* Decorative red lines */
+}
+
+.no-scrollbar::-webkit-scrollbar{
+  display: none;
+}
