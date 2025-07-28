@@ -121,7 +121,6 @@ const Cart = () => {
                 <div className="grid grid-cols-[2fr_1fr_1fr] text-gray-500 text-base font-medium pb-3">
                     <p className="text-left">Product Details</p>
                     <p className="text-center">Subtotal</p>
-                    <p className="text-center">Action</p>
                 </div>
 
                 {cartArray.map((product, index) => (
@@ -149,9 +148,6 @@ const Cart = () => {
                             </div>
                         </div>
                         <p className="text-center">{currency}{product.offerPrice * product.quantity}</p>
-                        <button onClick={() => removeFromCart(product._id)} className="cursor-pointer mx-auto">
-                            <img src={assets.remove_icon} alt="remove" className="inline-block w-6 h-6" />
-                        </button>
                     </div>
                 ))}
 
