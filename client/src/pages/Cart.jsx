@@ -60,33 +60,48 @@ const Cart = () => {
         }
     };
 
-    const placeOrder = async () => {
-        try {
-            if (!selectedAddress) {
-                return toast.error("Please select an address");
-            }
-
-            const shippingCharge = calculateShippingFee(selectedAddress);
-
-            const { data } = await axios.post('/api/order/cod', {
-                userId: user._id,
-                items: cartArray.map(item => ({ product: item._id, quantity: item.quantity })),
-                address: selectedAddress._id,
-                shippingFee: shippingCharge
-            });
-
-            if (data.success) {
-                toast.success(data.message);
-                setCartItems({});
-                navigate('/my-orders');
-            } else {
-                toast.error(data.message);
-            }
-
-        } catch (error) {
-            toast.error(error.message);
+   const placeOrder = async () => {
+    try {
+        if (!selectedAddress) {
+            return toast.error("Please select an address");
         }
-    };
+
+        // 🧠 Check if address contains 'mumbai' (case insensitive)
+        const isMumbai = selectedAddress.city?.toLowerCase().includes("mumbai");
+
+        // Calculate shipping fee: Free if Mumbai, else ₹200 per kg
+        let shippingFee = 0;
+
+        if (!isMumbai) {
+            shippingFee = cartArray.reduce((total, item) => {
+                const weight = item.weight || 1; // fallback weight
+                return total + 200 * weight * item.quantity;
+            }, 0);
+        }
+
+        const { data } = await axios.post('/api/order/cod', {
+            userId: user._id,
+            items: cartArray.map(item => ({
+                product: item._id,
+                quantity: item.quantity
+            })),
+            address: selectedAddress._id,
+            shippingFee,
+        });
+
+        if (data.success) {
+            toast.success(data.message);
+            setCartItems({});
+            navigate('/my-orders');
+        } else {
+            toast.error(data.message);
+        }
+
+    } catch (error) {
+        toast.error(error.message);
+    }
+};
+
 
     useEffect(() => {
         if (products.length > 0 && cartItems) {
@@ -203,16 +218,27 @@ const Cart = () => {
                         <span>Price</span><span>{currency}{getCartAmount()}</span>
                     </p>
                     <p className="flex justify-between">
-                        <span>Shipping Fee</span>
-                        <span className={shippingFee === 0 ? "text-green-600" : ""}>
-                            {shippingFee === 0 ? "Free" : `${currency}${shippingFee}`}
-                        </span>
-                    </p>
-                    <p className="flex justify-between text-lg font-medium mt-3">
-                        <span>Total Amount:</span>
-                        <span>{currency}{getCartAmount() + shippingFee}</span>
-                    </p>
-                </div>
+  <span>Shipping Fee</span>
+  <span className={selectedAddress?.city?.toLowerCase().includes("mumbai") ? "text-green-600" : "text-red-600"}>
+    {selectedAddress?.city?.toLowerCase().includes("mumbai") ? "Free" : `${currency}${cartArray.reduce((total, item) => {
+        const weight = item.weight || 1;
+        return total + 200 * weight * item.quantity;
+    }, 0)}`}
+  </span>
+</p>
+
+<p className="flex justify-between text-lg font-medium mt-3">
+  <span>Total Amount:</span>
+  <span>
+    {currency}
+    {getCartAmount() +
+      (selectedAddress?.city?.toLowerCase().includes("mumbai") ? 0 : cartArray.reduce((total, item) => {
+        const weight = item.weight || 1;
+        return total + 200 * weight * item.quantity;
+      }, 0))}
+  </span>
+</p>
+
 
                 <button onClick={placeOrder} className="w-full py-3 mt-6 cursor-pointer bg-primary text-white font-medium hover:bg-primary-dull transition">
                     Place Order
