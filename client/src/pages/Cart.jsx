@@ -28,9 +28,19 @@ const Cart = () => {
     };
 
     const calculateShippingFee = (address, cart = cartArray) => {
-        if (!address) return 0;
+        if (!address || cart.length === 0) return 0;
+
         const isMumbai = address.city?.toLowerCase().includes("mumbai");
-        if (isMumbai) return 0;
+        const cartTotal = cart.reduce((total, item) => {
+            return total + item.offerPrice * item.quantity;
+        }, 0);
+
+        if (isMumbai) {
+            if (cartTotal >= 2000) return 0;
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            return totalItems * 200;
+        }
+
         const totalWeight = cart.reduce((total, item) => {
             const weight = parseFloat(item.weight) || 1;
             return total + weight * item.quantity;
