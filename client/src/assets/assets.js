@@ -71,6 +71,9 @@ import tea from "./tea.png"
 import pistacio from "./pistacio.png"
 import ladoo from "./ladoo.png"
 import cookie from "./cookie.png"
+import gm from "./250gms.png"
+import gms from "./500gms.png"
+import kg from "./kg.png"
 
 export const assets = {
   logo,
@@ -112,21 +115,21 @@ export const categories = [
     bgColor: "#A67B5B",
   },
   {
-    text: "Scrumptious Bites",
-    path: "Bites",
-    image: pistacio,
+    text: "250 gms",
+    path: "250gms",
+    image: gm,
     bgColor: "#A67B5B",
   },
   {
-    text: "Mouthwatering Ladoos",
-    path: "Ladoo",
-    image: ladoo,
+    text: "500 gms",
+    path: "500gms",
+    image: gms,
     bgColor: "#A67B5B",
   },
   {
-    text: "Delicious Cookies",
-    path: "Cookie",
-    image: cookie,
+    text: "1 kg",
+    path: "1kg",
+    image: kg,
     bgColor: "#A67B5B",
   }
 ];
