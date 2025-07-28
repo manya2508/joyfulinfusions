@@ -13,6 +13,7 @@ const Cart = () => {
     const [addresses, setAddresses] = useState([]);
     const [showAddress, setShowAddress] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState(null);
+    const [shippingFee, setShippingFee] = useState(0);
 
     const getCart = () => {
         let tempArray = [];
@@ -26,6 +27,21 @@ const Cart = () => {
         setCartArray(tempArray);
     };
 
+    const calculateShippingFee = (address) => {
+        if (!address) return 0;
+
+        if (address.city.toLowerCase() === "mumbai") {
+            return 0;
+        } else {
+            // Calculate weight-based shipping (₹200 per kg)
+            const totalWeight = cartArray.reduce((total, item) => {
+                const weight = parseFloat(item.weight) || 0;
+                return total + weight * item.quantity;
+            }, 0);
+            return Math.ceil(totalWeight) * 200; // rounded up
+        }
+    };
+
     const getUserAddress = async () => {
         try {
             const { data } = await axios.get('/api/address/get');
@@ -33,6 +49,8 @@ const Cart = () => {
                 setAddresses(data.addresses);
                 if (data.addresses.length > 0) {
                     setSelectedAddress(data.addresses[0]);
+                    const fee = calculateShippingFee(data.addresses[0]);
+                    setShippingFee(fee);
                 }
             } else {
                 toast.error(data.message);
@@ -48,10 +66,13 @@ const Cart = () => {
                 return toast.error("Please select an address");
             }
 
+            const shippingCharge = calculateShippingFee(selectedAddress);
+
             const { data } = await axios.post('/api/order/cod', {
                 userId: user._id,
                 items: cartArray.map(item => ({ product: item._id, quantity: item.quantity })),
-                address: selectedAddress._id
+                address: selectedAddress._id,
+                shippingFee: shippingCharge
             });
 
             if (data.success) {
@@ -78,6 +99,13 @@ const Cart = () => {
             getUserAddress();
         }
     }, [user]);
+
+    useEffect(() => {
+        if (selectedAddress) {
+            const fee = calculateShippingFee(selectedAddress);
+            setShippingFee(fee);
+        }
+    }, [selectedAddress, cartArray]);
 
     return products.length > 0 && cartItems ? (
         <div className="flex flex-col md:flex-row mt-16">
@@ -175,10 +203,14 @@ const Cart = () => {
                         <span>Price</span><span>{currency}{getCartAmount()}</span>
                     </p>
                     <p className="flex justify-between">
-                        <span>Shipping Fee</span><span className="text-green-600">Free</span>
+                        <span>Shipping Fee</span>
+                        <span className={shippingFee === 0 ? "text-green-600" : ""}>
+                            {shippingFee === 0 ? "Free" : `${currency}${shippingFee}`}
+                        </span>
                     </p>
                     <p className="flex justify-between text-lg font-medium mt-3">
-                        <span>Total Amount:</span><span>{currency}{getCartAmount()}</span>
+                        <span>Total Amount:</span>
+                        <span>{currency}{getCartAmount() + shippingFee}</span>
                     </p>
                 </div>
 
