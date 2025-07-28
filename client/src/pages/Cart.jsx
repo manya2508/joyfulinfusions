@@ -16,30 +16,26 @@ const Cart = () => {
     const [shippingFee, setShippingFee] = useState(0);
 
     const getCart = () => {
-        let tempArray = [];
+        const tempArray = [];
         for (const key in cartItems) {
             const product = products.find(item => item._id === key);
             if (product) {
-                product.quantity = cartItems[key];
-                tempArray.push(product);
+                const quantity = cartItems[key];
+                tempArray.push({ ...product, quantity });
             }
         }
         setCartArray(tempArray);
     };
 
-    const calculateShippingFee = (address) => {
+    const calculateShippingFee = (address, cart = cartArray) => {
         if (!address) return 0;
-
-        if (address.city.toLowerCase() === "mumbai") {
-            return 0;
-        } else {
-            // Calculate weight-based shipping (₹200 per kg)
-            const totalWeight = cartArray.reduce((total, item) => {
-                const weight = parseFloat(item.weight) || 0;
-                return total + weight * item.quantity;
-            }, 0);
-            return Math.ceil(totalWeight) * 200; // rounded up
-        }
+        const isMumbai = address.city?.toLowerCase().includes("mumbai");
+        if (isMumbai) return 0;
+        const totalWeight = cart.reduce((total, item) => {
+            const weight = parseFloat(item.weight) || 1;
+            return total + weight * item.quantity;
+        }, 0);
+        return Math.ceil(totalWeight) * 200;
     };
 
     const getUserAddress = async () => {
@@ -48,71 +44,51 @@ const Cart = () => {
             if (data.success) {
                 setAddresses(data.addresses);
                 if (data.addresses.length > 0) {
-                    setSelectedAddress(data.addresses[0]);
-                    const fee = calculateShippingFee(data.addresses[0]);
-                    setShippingFee(fee);
+                    const first = data.addresses[0];
+                    setSelectedAddress(first);
+                    setShippingFee(calculateShippingFee(first));
                 }
             } else {
                 toast.error(data.message);
             }
         } catch (error) {
-            toast.error(error.message);
+            toast.error("Failed to fetch addresses");
         }
     };
 
-   const placeOrder = async () => {
-    try {
-        if (!selectedAddress) {
-            return toast.error("Please select an address");
+    const placeOrder = async () => {
+        try {
+            if (!selectedAddress) return toast.error("Please select an address");
+
+            const fee = calculateShippingFee(selectedAddress);
+            const { data } = await axios.post('/api/order/cod', {
+                userId: user._id,
+                items: cartArray.map(item => ({
+                    product: item._id,
+                    quantity: item.quantity
+                })),
+                address: selectedAddress._id,
+                shippingFee: fee,
+            });
+
+            if (data.success) {
+                toast.success(data.message);
+                setCartItems({});
+                navigate('/my-orders');
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message || "Order failed");
         }
-
-        // 🧠 Check if address contains 'mumbai' (case insensitive)
-        const isMumbai = selectedAddress.city?.toLowerCase().includes("mumbai");
-
-        // Calculate shipping fee: Free if Mumbai, else ₹200 per kg
-        let shippingFee = 0;
-
-        if (!isMumbai) {
-            shippingFee = cartArray.reduce((total, item) => {
-                const weight = item.weight || 1; // fallback weight
-                return total + 200 * weight * item.quantity;
-            }, 0);
-        }
-
-        const { data } = await axios.post('/api/order/cod', {
-            userId: user._id,
-            items: cartArray.map(item => ({
-                product: item._id,
-                quantity: item.quantity
-            })),
-            address: selectedAddress._id,
-            shippingFee,
-        });
-
-        if (data.success) {
-            toast.success(data.message);
-            setCartItems({});
-            navigate('/my-orders');
-        } else {
-            toast.error(data.message);
-        }
-
-    } catch (error) {
-        toast.error(error.message);
-    }
-};
-
+    };
 
     useEffect(() => {
-        if (products.length > 0 && cartItems) {
-            getCart();
-        }
+        if (products.length > 0 && cartItems) getCart();
     }, [products, cartItems]);
 
     useEffect(() => {
-        if (user) {
-            getUserAddress();
-        }
+        if (user) getUserAddress();
     }, [user]);
 
     useEffect(() => {
@@ -122,10 +98,12 @@ const Cart = () => {
         }
     }, [selectedAddress, cartArray]);
 
+    const totalAmount = getCartAmount() + shippingFee;
+
     return products.length > 0 && cartItems ? (
         <div className="flex flex-col md:flex-row mt-16">
             {/* Left side - Cart items */}
-            <div className='flex-1 max-w-4xl'>
+            <div className="flex-1 max-w-4xl">
                 <h1 className="text-3xl font-medium mb-6">
                     Shopping Cart <span className="text-sm text-primary">{getCartCount()} Items</span>
                 </h1>
@@ -151,8 +129,8 @@ const Cart = () => {
                                     <p>Weight: <span>{product.weight || "N/A"}</span></p>
                                     <div className='flex items-center'>
                                         <p>Qty:</p>
-                                        <select onChange={e => updateCartItem(product._id, Number(e.target.value))} value={cartItems[product._id]} className='outline-none'>
-                                            {Array(cartItems[product._id] > 9 ? cartItems[product._id] : 9).fill('').map((_, index) => (
+                                        <select onChange={e => updateCartItem(product._id, Number(e.target.value))} value={cartItems[product._id]} className='outline-none ml-1'>
+                                            {Array(Math.max(cartItems[product._id], 9)).fill('').map((_, index) => (
                                                 <option key={index} value={index + 1}>{index + 1}</option>
                                             ))}
                                         </select>
@@ -191,7 +169,7 @@ const Cart = () => {
                         </button>
 
                         {showAddress && (
-                            <div className="absolute top-12 py-1 bg-white border border-gray-300 text-sm w-full">
+                            <div className="absolute top-12 py-1 bg-white border border-gray-300 text-sm w-full z-10">
                                 {addresses.map((address, index) => (
                                     <p key={index} onClick={() => { setSelectedAddress(address); setShowAddress(false) }} className="text-gray-500 p-2 hover:bg-gray-100 cursor-pointer">
                                         {address.street}, {address.city}, {address.state}, {address.country}
@@ -218,27 +196,17 @@ const Cart = () => {
                         <span>Price</span><span>{currency}{getCartAmount()}</span>
                     </p>
                     <p className="flex justify-between">
-  <span>Shipping Fee</span>
-  <span className={selectedAddress?.city?.toLowerCase().includes("mumbai") ? "text-green-600" : "text-red-600"}>
-    {selectedAddress?.city?.toLowerCase().includes("mumbai") ? "Free" : `${currency}${cartArray.reduce((total, item) => {
-        const weight = item.weight || 1;
-        return total + 200 * weight * item.quantity;
-    }, 0)}`}
-  </span>
-</p>
+                        <span>Shipping Fee</span>
+                        <span className={shippingFee === 0 ? "text-green-600" : "text-red-600"}>
+                            {shippingFee === 0 ? "Free" : `${currency}${shippingFee}`}
+                        </span>
+                    </p>
 
-<p className="flex justify-between text-lg font-medium mt-3">
-  <span>Total Amount:</span>
-  <span>
-    {currency}
-    {getCartAmount() +
-      (selectedAddress?.city?.toLowerCase().includes("mumbai") ? 0 : cartArray.reduce((total, item) => {
-        const weight = item.weight || 1;
-        return total + 200 * weight * item.quantity;
-      }, 0))}
-  </span>
-</p>
-
+                    <p className="flex justify-between text-lg font-medium mt-3">
+                        <span>Total Amount:</span>
+                        <span>{currency}{totalAmount}</span>
+                    </p>
+                </div>
 
                 <button onClick={placeOrder} className="w-full py-3 mt-6 cursor-pointer bg-primary text-white font-medium hover:bg-primary-dull transition">
                     Place Order
