@@ -73,7 +73,7 @@ import ladoo from "./ladoo.png"
 import cookie from "./cookie.png"
 import gm from "./250gms.png"
 import gms from "./500gms.png"
-import kg from "./kg.png"
+import kg from "./1kg.png"
 
 export const assets = {
   logo,
