@@ -12,8 +12,14 @@ const Orders = () => {
         try {
             const { data } = await axios.get('/api/order/seller')
             if (data.success) {
-                setOrders(data.orders)
-                const total = data.orders.reduce((acc, order) => acc + order.amount, 0)
+                // ✅ Filter out any items with null products
+                const cleanedOrders = data.orders.map(order => ({
+                    ...order,
+                    items: order.items.filter(item => item.product !== null)
+                }))
+                setOrders(cleanedOrders)
+
+                const total = cleanedOrders.reduce((acc, order) => acc + order.amount, 0)
                 setTotalAmount(total)
             } else {
                 toast.error(data.message)
@@ -51,7 +57,7 @@ const Orders = () => {
                                 {order.items.map((item, index) => (
                                     <div key={index} className="flex flex-col">
                                         <p className="font-medium">
-                                            {item.product.name}{" "}
+                                            {item.product?.name || <span className="text-red-500">[Unknown Product]</span>}{" "}
                                             <span className="text-primary">x {item.quantity}</span>
                                         </p>
                                     </div>
@@ -72,9 +78,7 @@ const Orders = () => {
                         </p>
 
                         <div className="flex flex-col text-sm md:text-base text-black/60">
-                            
                             <p>Date: {new Date(order.createdAt).toLocaleDateString()}</p>
-                            
                         </div>
                     </div>
                 ))}
